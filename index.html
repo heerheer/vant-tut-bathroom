@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TUT洗澡助手-Vant版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1 user-scalable=0 user-scalable=no">
+    <!-- 引入样式文件 -->
+    <link rel="stylesheet" href="./css/vant.css"/>
+    <link rel="stylesheet" href="./css/index.css"/>
+    <!-- 引入 Vue 和 Vant 的 JS 文件 -->
+    <script src="./js/vue.min.js"></script>
+
+    <script src="./js/vant.min.js"></script>
+    <script src="./js/orderUtil.js"></script>
+    <script src="./js/axios.min.js"></script>
+    <script src="./js/md5.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+
+    <div v-if="tab==='list'" style="margin-top: 2rem">
+        <h2 style="text-align: center;">🤸‍♂我的预约</h2>
+        <div style="text-align: center;opacity: 0.6;">往左滑预约展开操作面板</div>
+        <div style="height: 1rem"></div>
+        <div style="text-align: left;margin: 0">
+            <van-swipe-cell v-for="order in orders" style="margin-bottom: 1rem">
+                <van-cell center :title="order.period" @click="orderClick(order)" is-link>
+                    <template #title>
+                        <div style="display: flex;flex-direction:column;justify-items: left;align-items: flex-start">
+                            <span style="font-size: 1.2rem">{{ order.period }}</span>
+                            <div>
+                                <span style="opacity: 0.8;margin-right: 0.3rem">{{ order.bathRoomName }}</span>
+                                <van-tag plain v-if="order.status==0" type="success">已预约</van-tag>
+                                <van-tag plain v-if="order.status==0 && Date.now() - 300000>=order.periodEndTime"
+                                         type="warning">请前往
+                                </van-tag>
+                                <van-tag plain v-if="order.status==0 && Date.now() - 100000>=order.periodEndTime"
+                                         type="danger">即将超时
+                                </van-tag>
+                                <van-tag plain v-if="order.status==1" type="primary">已扫码</van-tag>
+                                <van-tag plain v-if="order.status==2" type="success">已完成</van-tag>
+                                <van-tag plain v-if="order.status==3" type="danger">已超时</van-tag>
+                                <van-tag plain v-if="order.status==4" type="">已归档</van-tag>
+                            </div>
+
+                        </div>
+                    </template>
+
+                </van-cell>
+                <template #right>
+                    <van-button style="height: 100%" type="danger" text="取消预约"
+                                @click="cancelBook(order.id,order.period)"></van-button>
+                </template>
+            </van-swipe-cell>
+
+            <van-empty v-if="orders.length==0" description="你还没有预约"></van-empty>
+
+        </div>
+
+    </div>
+
+    <div v-if="tab==='order'" style="text-align: center;margin-top: 2rem">
+        <h2>😋新的预约</h2>
+        <van-tabs v-model:active="newOrder.room" style="text-align: left;" sticky @click-tab="onClickTab">
+            <van-tab v-for="room in newOrder.rooms" :title="room.name" :name="room.id"
+            >
+                <van-list
+                        :finished="true"
+                        finished-text="没有更多了">
+                    <van-cell v-for="book in newOrder.list" :key="book"
+                              :value="book.remain+'/'+book.maxBookNum" is-
+                              @click="orderConfirm(book.id,book.period)">
+                        <template #title>
+                            <span style="margin-right: 0.8rem">{{ book.period }}</span>
+                            <van-tag v-if="book.remain>=1" type="success" size="small" plain>可预约</van-tag>
+                        </template>
+                    </van-cell>
+                </van-list>
+            </van-tab>
+        </van-tabs>
+    </div>
+
+    <div v-if="tab==='me'" style="text-align: center;margin: 2rem">
+        <h2>👦我的信息</h2>
+        <van-cell-group style="text-align: left" inset>
+            <van-cell title="账户信息" is-link value="修改" @click="meinfo.show=true"></van-cell>
+            <van-cell v-if="" title="账户等级" center
+                      :value="'Lv.'+(localData.exp/50 +1) +' '+(localData.exp % 50 ?? '0') +'/'+'50' "></van-cell>
+            <van-cell v-if="api!==undefined" title="账户会员" center>
+                <template #label>
+                    <div style="margin-top: 0.2rem">
+
+                        <van-tag plain style="margin-right: 0.2rem" color="#FC7903">至尊洗澡年卡</van-tag>
+                        <van-tag plain style="margin-right: 0.2rem" color="#003153">927VIP</van-tag>
+                        <van-tag v-if="meinfo.user==='20191951'" style="margin-right: 0.5rem" plain color="#20B2AA">
+                            青龙偃月SVIP
+                        </van-tag>
+                        <van-tag v-if="meinfo.user==='20191953'" style="margin-right: 0.5rem" plain color="#00BCD4">
+                            爱穿白袜的通讯录
+                        </van-tag>
+                        <van-tag v-if="meinfo.user==='20191955'" style="margin-right: 0.5rem" plain color="#F01C20">
+                            摆烂之人
+                        </van-tag>
+                        <van-tag style="margin-right: 0.5rem" plain color="#F01C20">
+                            啥也不知道
+                        </van-tag>
+                    </div>
+
+                </template>
+            </van-cell>
+        </van-cell-group>
+        <van-image
+                @click="qrcodeClick"
+                width="280"
+                height="280"
+                :src="meinfo.qrcode">
+            <template v-slot:loading>
+                <van-loading type="spinner" size="20"></van-loading>
+            </template>
+        </van-image>
+    </div>
+
+    <van-tabbar v-model="tab" fixed="true" @change="(active)=>{tab = active}">
+        <van-tabbar-item icon="fire-o" name="list">我的预约</van-tabbar-item>
+        <!--        <van-tabbar-item icon="search">历史</van-tabbar-item>-->
+        <van-tabbar-item icon="aim" name="order">开始预定</van-tabbar-item>
+        <van-tabbar-item icon="smile-o" name="me">我的信息</van-tabbar-item>
+    </van-tabbar>
+
+    <!-- 账户信息输入页面  -->
+    <van-dialog v-model:show="meinfo.show" title="信息修改" show-cancel-button @confirm="confirmUserInfo">
+        <van-cell-group inset>
+            <van-field v-model="meinfo.user" label="账户" placeholder="输入账户名..(学号)"></van-field>
+            <van-field v-model="meinfo.pwd" label="密码" placeholder="输入密码"></van-field>
+        </van-cell-group>
+    </van-dialog>
+</div>
+
+<script>
+    const {createApp} = Vue
+    const {Toast, Dialog, ImagePreview} = vant
+
+
+    let app = createApp({
+        data() {
+            return {
+                tab: 'me',
+                meinfo: {
+                    show: false,
+                    user: '',
+                    pwd: '',
+                    qrcode: ''
+                },
+                api: undefined,
+                orders: [],
+                newOrder: {
+                    rooms: [],
+                    room: '',
+                    list: [],
+                    active: ''
+                },
+                localData: {
+                    exp: 0,
+                    addExp(exp) {
+                        localStorage.setItem('exp', this.getExp() + exp)
+                        this.exp = this.getExp()
+                    },
+                    getExp() {
+                        this.exp = localStorage.getItem('exp') ?? 0
+                        return this.exp
+                    }
+                }
+            }
+        },
+        mounted() {
+            let user = localStorage.getItem('user.user') ?? ''
+            let pwd = localStorage.getItem('user.pwd') ?? ''
+            if (pwd === "" || user === "") {
+                Dialog.alert({message: "用户信息为空,请确定账户信息。"})
+                this.meinfo.show = true;
+            } else {
+                this.meinfo.user = user;
+                this.meinfo.pwd = pwd;
+                OrderUtil.login(this.meinfo.user, this.meinfo.pwd).then(api => {
+                    if (api) {
+                        this.api = api;
+                        this.refreshData();
+                        this.checkin();
+                    } else {
+                        Toast('账户错误');
+                    }
+                })
+            }
+        },
+        methods: {
+            checkin() {
+                if (localStorage.getItem('checkin-' + new Date().toLocaleDateString()) === 'true') {
+                    this.localData.getExp();
+                } else {
+                    localStorage.setItem('checkin-' + new Date().toLocaleDateString(), true.toString())
+                    this.localData.addExp(50)
+                    Toast('今日签到成功,经验+50')
+                }
+
+            },
+            async confirmUserInfo() {
+                let api = await OrderUtil.login(this.meinfo.user, this.meinfo.pwd)
+                if (api) {
+                    localStorage.setItem('user.user', this.meinfo.user);
+                    localStorage.setItem('user.pwd', this.meinfo.pwd);
+                    Toast('账户信息确认成功');
+                    this.api = api;
+                    await this.refreshData();
+                } else {
+                    Toast('用户信息错误...登入失败');
+                }
+            },
+            async refreshData() {
+                let qr_code = await this.api.getQRCode()
+                if (qr_code) {
+                    this.meinfo.qrcode = qr_code
+                    console.log(this.meinfo.qrcode)
+                }
+                let list = await this.api.getOrderList()
+                this.orders = list
+
+                this.newOrder.rooms = await this.api.getRoomList()
+                this.newOrder.list = await this.api.getBookList(this.newOrder.rooms[0].id)
+
+                this.checkin();
+
+            },
+            async onClickTab(data) {
+                let {name} = data;
+                this.newOrder.list = await this.api.getBookList(name);
+
+            },
+            cancelBook(id, period) {
+                Dialog.confirm({
+                    title: '取消预约',
+                    message: `你确定取消预约「${period}」?`
+                }).then(async x => {
+                    let data = await this.api.cancel(id);
+                    if (data) {
+                        Toast('取消成功!')
+                        this.refreshData()
+                    }
+                }).catch(x => {
+                    Toast('取消失败!')
+                })
+            }
+            ,
+            orderConfirm(bookId, period) {
+                Dialog.confirm({
+                    title: '新的预约',
+                    message: `你确定预约时间段😅「${period}」`
+                }).then(async x => {
+                    let data = await this.api.order(bookId);
+                    if (data) {
+                        localData.addExp(10);
+                        Toast('预约成功，获得10经验值。')
+                        this.refreshData()
+                    }
+                }).catch(x => {
+
+                })
+            },
+            vipClick() {
+                Toast('你是尊贵的VIP。但是没什么几把用。')
+            },
+            orderClick(order) {
+                Dialog.alert({
+                    title: '预约详情',
+                    message: '预约时间段:' + order.period + '\n' + '预约地点:' + order.bathRoomName
+                })
+            },
+            qrcodeClick() {
+                ImagePreview({
+                    images: [this.meinfo.qrcode],
+                    closeable: true,
+                });
+            }
+        }
+    })
+
+    app.use(vant)
+    app.use(vant.Tabbar, vant.TabbarItem)
+    app.use(vant.Dialog)
+    app.use(vant.Image)
+    app.use(vant.Empty)
+    app.use(vant.Tab, vant.Tabs)
+    app.use(vant.Cell, vant.CellGroup, vant.SwipeCell)
+    app.mount('#app')
+</script>
+</body>
+</html>

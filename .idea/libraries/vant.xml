@@ -1,0 +1,18 @@
+<component name="libraryTable">
+  <library name="vant" type="javaScript">
+    <properties>
+      <sourceFilesUrls>
+        <item url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/__unpkg.com_vant@3_lib_vant.js" />
+        <item url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/http_unpkg.com_vant@3_lib_index.css" />
+        <item url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/http_unpkg.com_vant@3_lib_vant.js" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/__unpkg.com_vant@3_lib_vant.js" />
+      <root url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/http_unpkg.com_vant@3_lib_index.css" />
+      <root url="file://$APPLICATION_CONFIG_DIR$/javascript/extLibs/http_unpkg.com_vant@3_lib_vant.js" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
